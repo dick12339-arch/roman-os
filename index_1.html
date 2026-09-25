@@ -39,8 +39,7 @@ iframe{width:100%; height:calc(100vh - 148px); border:none; background:white; bo
   </div>
   <div class="flex items-center gap-2">
     <button onclick="document.getElementById('version-dialog').classList.remove('hidden')" class="text-[11px] px-3 py-1.5 bg-[#2a231c] border border-[#3a322a] rounded-full hover:bg-[#3a322a]">版本資訊</button>
-    <button onclick="syncRomanToD1()" class="text-[11px] px-3 py-1.5 bg-[#1a1611] text-white rounded-full font-bold border border-[#3a322a]">📤 同步到D1</button>
-    <button onclick="loadRomanFromD1()" class="text-[11px] px-3 py-1.5 bg-white text-black rounded-full font-bold border">📥 從D1載入</button>
+    <button onclick="syncRomanToD1()" class="text-[11px] px-3 py-1.5 bg-[#8b5cf6] text-white rounded-full font-bold">💾 同步羅曼到D1</button>
   </div>
 </header>
 <nav class="bg-white border-b border-[#e8ddd0] px-2 sm:px-6 py-2 flex gap-2 overflow-x-auto sticky top-[60px] z-40">
@@ -198,71 +197,20 @@ function showToast(title, desc, color='#c9a03e'){
   setTimeout(()=>{ div.remove(); }, 6000);
 }
 
-function getRomanRaw(){
-  // 1. 先從父層 localStorage
-  let raw = localStorage.getItem('roman_schedule_raw');
-  let site = localStorage.getItem('roman_site') || '太原';
-  // 2. 再試著從 iframe 裡面拿 (iframe 用 srcdoc，同 origin)
-  try{
-    const iframe = document.getElementById('iframe-roman');
-    if(iframe && iframe.contentWindow){
-      const r = iframe.contentWindow.localStorage.getItem('roman_schedule_raw');
-      const s = iframe.contentWindow.localStorage.getItem('roman_site');
-      if(r && r.length > (raw||'').length) raw = r;
-      if(s) site = s;
-    }
-  }catch(e){}
-  return {raw, site};
-}
-
 async function syncRomanToD1(){
   try{
-    const {raw, site} = getRomanRaw();
-    if(!raw){ showToast('同步失敗','羅曼資料區沒有資料，請先在羅曼那一卡按儲存',' #ef4444'); return; }
-    showToast('同步中...', `正在將 ${site} 同步到 D1...`, '#8b5cf6');
+    const raw = localStorage.getItem('roman_schedule_raw') || '';
+    if(!raw){ showToast('同步失敗','羅曼資料區沒有資料',' #ef4444'); return; }
+    const site = localStorage.getItem('roman_site') || '太原';
     const res = await fetch('/api/roman', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({raw, site, id: site})
     });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || await res.text());
-    showToast('同步成功',`已將 ${site} (${data.len}字) 同步到 D1`,' #10b981');
+    if(!res.ok) throw new Error(await res.text());
+    showToast('同步成功',`已將 ${site} 同步到 D1`,' #10b981');
   }catch(e){
-    showToast('D1 同步失敗', e.message,' #ef4444');
-  }
-}
-
-async function loadRomanFromD1(){
-  try{
-    const {site: currentSite} = getRomanRaw();
-    showToast('載入中...', '從 D1 讀取中...', '#3b82f6');
-    const res = await fetch('/api/roman?site='+encodeURIComponent(currentSite||''));
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || '載入失敗');
-    const current = data.current;
-    if(!current || !current.raw){
-      showToast('D1 是空的','還沒有同步過資料，請先按同步到D1',' #f59e0b');
-      return;
-    }
-    // 寫回兩個地方
-    localStorage.setItem('roman_schedule_raw', current.raw);
-    localStorage.setItem('roman_site', current.site);
-    try{
-      const iframe = document.getElementById('iframe-roman');
-      if(iframe && iframe.contentWindow){
-        iframe.contentWindow.localStorage.setItem('roman_schedule_raw', current.raw);
-        iframe.contentWindow.localStorage.setItem('roman_site', current.site);
-      }
-    }catch(e){}
-    showToast('載入成功',`已從 D1 載入 ${current.site} (${current.raw.length}字)`, ' #10b981');
-    // 重新整理羅曼那一卡
-    setTimeout(()=>{
-      const iframe = document.getElementById('iframe-roman');
-      if(iframe) iframe.srcdoc = decodeB64(sources['roman']);
-    }, 500);
-  }catch(e){
-    showToast('D1 載入失敗', e.message,' #ef4444');
+    showToast('D1 同步失敗', e.message + ' 請檢查 wrangler.toml 和 D1 綁定',' #ef4444');
   }
 }
 </script>
