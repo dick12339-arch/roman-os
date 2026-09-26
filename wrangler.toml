@@ -5,6 +5,3 @@ compatibility_date = "2024-09-26"
 binding = "DB"
 database_name = "roman-schedule-db"
 database_id = "8719bcb8-10e9-4f6e-b6c4-54ccf5a36a91"
-
-[vars]
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCJVTtQF8YyGYFsT89hG2mEJHV1KR-3rQY/exec"
